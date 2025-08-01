@@ -1,0 +1,5 @@
+  File "/home/robot/ros2_ws/MecaControllerPythonWithJoystick-main/install/mecacontrollerpython_pkg/lib/python3.10/site-packages/mecacontrollerpython_pkg/freq_publisher.py", line 34
+    direction = 0 if omega >= 0 else 
+                                     ^
+SyntaxError: invalid syntax
+

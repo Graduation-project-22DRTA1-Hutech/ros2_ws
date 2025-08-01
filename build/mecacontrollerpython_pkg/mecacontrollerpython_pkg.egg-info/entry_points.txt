@@ -1,0 +1,3 @@
+[console_scripts]
+freq_publisher = mecacontrollerpython_pkg.freq_publisher:main
+
