@@ -1,0 +1,3 @@
+[console_scripts]
+freq_publisher = mecanum_joystick.freq_publisher:main
+

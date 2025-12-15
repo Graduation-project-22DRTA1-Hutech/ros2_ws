@@ -1,0 +1,13 @@
+package.xml
+setup.cfg
+setup.py
+mecanum_joystick/__init__.py
+mecanum_joystick/freq_publisher.py
+mecanum_joystick.egg-info/PKG-INFO
+mecanum_joystick.egg-info/SOURCES.txt
+mecanum_joystick.egg-info/dependency_links.txt
+mecanum_joystick.egg-info/entry_points.txt
+mecanum_joystick.egg-info/requires.txt
+mecanum_joystick.egg-info/top_level.txt
+mecanum_joystick.egg-info/zip-safe
+resource/mecanum_joystick

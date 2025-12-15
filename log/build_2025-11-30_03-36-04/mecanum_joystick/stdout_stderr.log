@@ -1,0 +1,22 @@
+running develop
+running egg_info
+creating mecanum_joystick.egg-info
+writing mecanum_joystick.egg-info/PKG-INFO
+writing dependency_links to mecanum_joystick.egg-info/dependency_links.txt
+writing entry points to mecanum_joystick.egg-info/entry_points.txt
+writing requirements to mecanum_joystick.egg-info/requires.txt
+writing top-level names to mecanum_joystick.egg-info/top_level.txt
+writing manifest file 'mecanum_joystick.egg-info/SOURCES.txt'
+reading manifest file 'mecanum_joystick.egg-info/SOURCES.txt'
+writing manifest file 'mecanum_joystick.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages/mecanum-joystick.egg-link (link to .)
+Installing freq_publisher script to /home/thnhan/ros2_ws/install/mecanum_joystick/lib/mecanum_joystick
+
+Installed /home/thnhan/ros2_ws/build/mecanum_joystick
+running symlink_data
+creating /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index
+creating /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index/resource_index
+creating /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index/resource_index/packages
+symbolically linking /home/thnhan/ros2_ws/build/mecanum_joystick/resource/mecanum_joystick -> /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index/resource_index/packages
+symbolically linking /home/thnhan/ros2_ws/build/mecanum_joystick/package.xml -> /home/thnhan/ros2_ws/install/mecanum_joystick/share/mecanum_joystick
