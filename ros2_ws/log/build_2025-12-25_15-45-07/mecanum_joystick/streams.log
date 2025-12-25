@@ -1,0 +1,24 @@
+[0.456s] Invoking command in '/home/thnhan/ros2_ws/src/mecanum_joystick': PYTHONPATH=/home/thnhan/ros2_ws/build/mecanum_joystick/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mecanum_joystick build --build-base /home/thnhan/ros2_ws/build/mecanum_joystick/build install --record /home/thnhan/ros2_ws/build/mecanum_joystick/install.log --single-version-externally-managed install_data
+[0.640s] running egg_info
+[0.641s] writing ../../build/mecanum_joystick/mecanum_joystick.egg-info/PKG-INFO
+[0.641s] writing dependency_links to ../../build/mecanum_joystick/mecanum_joystick.egg-info/dependency_links.txt
+[0.641s] writing entry points to ../../build/mecanum_joystick/mecanum_joystick.egg-info/entry_points.txt
+[0.641s] writing requirements to ../../build/mecanum_joystick/mecanum_joystick.egg-info/requires.txt
+[0.641s] writing top-level names to ../../build/mecanum_joystick/mecanum_joystick.egg-info/top_level.txt
+[0.643s] reading manifest file '../../build/mecanum_joystick/mecanum_joystick.egg-info/SOURCES.txt'
+[0.643s] writing manifest file '../../build/mecanum_joystick/mecanum_joystick.egg-info/SOURCES.txt'
+[0.643s] running build
+[0.643s] running build_py
+[0.643s] copying mecanum_joystick/freq_publisher.py -> /home/thnhan/ros2_ws/build/mecanum_joystick/build/lib/mecanum_joystick
+[0.644s] running install
+[0.644s] running install_lib
+[0.645s] copying /home/thnhan/ros2_ws/build/mecanum_joystick/build/lib/mecanum_joystick/freq_publisher.py -> /home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages/mecanum_joystick
+[0.645s] byte-compiling /home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages/mecanum_joystick/freq_publisher.py to freq_publisher.cpython-310.pyc
+[0.646s] running install_data
+[0.646s] running install_egg_info
+[0.648s] removing '/home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages/mecanum_joystick-0.0.0-py3.10.egg-info' (and everything under it)
+[0.648s] Copying ../../build/mecanum_joystick/mecanum_joystick.egg-info to /home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages/mecanum_joystick-0.0.0-py3.10.egg-info
+[0.648s] running install_scripts
+[0.664s] Installing freq_publisher script to /home/thnhan/ros2_ws/install/mecanum_joystick/lib/mecanum_joystick
+[0.664s] writing list of installed files to '/home/thnhan/ros2_ws/build/mecanum_joystick/install.log'
+[0.681s] Invoked command in '/home/thnhan/ros2_ws/src/mecanum_joystick' returned '0': PYTHONPATH=/home/thnhan/ros2_ws/build/mecanum_joystick/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mecanum_joystick build --build-base /home/thnhan/ros2_ws/build/mecanum_joystick/build install --record /home/thnhan/ros2_ws/build/mecanum_joystick/install.log --single-version-externally-managed install_data

@@ -1,0 +1,24 @@
+[0.446s] Invoking command in '/home/thnhan/ros2_ws/build/mecanum_joystick': PYTHONPATH=/home/thnhan/ros2_ws/build/mecanum_joystick/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/thnhan/ros2_ws/build/mecanum_joystick/build --no-deps symlink_data
+[0.642s] running develop
+[0.768s] running egg_info
+[0.768s] creating mecanum_joystick.egg-info
+[0.768s] writing mecanum_joystick.egg-info/PKG-INFO
+[0.768s] writing dependency_links to mecanum_joystick.egg-info/dependency_links.txt
+[0.768s] writing entry points to mecanum_joystick.egg-info/entry_points.txt
+[0.768s] writing requirements to mecanum_joystick.egg-info/requires.txt
+[0.768s] writing top-level names to mecanum_joystick.egg-info/top_level.txt
+[0.769s] writing manifest file 'mecanum_joystick.egg-info/SOURCES.txt'
+[0.770s] reading manifest file 'mecanum_joystick.egg-info/SOURCES.txt'
+[0.770s] writing manifest file 'mecanum_joystick.egg-info/SOURCES.txt'
+[0.771s] running build_ext
+[0.771s] Creating /home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages/mecanum-joystick.egg-link (link to .)
+[0.772s] Installing freq_publisher script to /home/thnhan/ros2_ws/install/mecanum_joystick/lib/mecanum_joystick
+[0.772s] 
+[0.773s] Installed /home/thnhan/ros2_ws/build/mecanum_joystick
+[0.773s] running symlink_data
+[0.773s] creating /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index
+[0.773s] creating /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index/resource_index
+[0.773s] creating /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index/resource_index/packages
+[0.773s] symbolically linking /home/thnhan/ros2_ws/build/mecanum_joystick/resource/mecanum_joystick -> /home/thnhan/ros2_ws/install/mecanum_joystick/share/ament_index/resource_index/packages
+[0.773s] symbolically linking /home/thnhan/ros2_ws/build/mecanum_joystick/package.xml -> /home/thnhan/ros2_ws/install/mecanum_joystick/share/mecanum_joystick
+[0.792s] Invoked command in '/home/thnhan/ros2_ws/build/mecanum_joystick' returned '0': PYTHONPATH=/home/thnhan/ros2_ws/build/mecanum_joystick/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/thnhan/ros2_ws/install/mecanum_joystick/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/thnhan/ros2_ws/build/mecanum_joystick/build --no-deps symlink_data

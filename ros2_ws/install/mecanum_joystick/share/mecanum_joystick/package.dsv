@@ -1,0 +1,6 @@
+source;share/mecanum_joystick/hook/pythonpath.ps1
+source;share/mecanum_joystick/hook/pythonpath.dsv
+source;share/mecanum_joystick/hook/pythonpath.sh
+source;share/mecanum_joystick/hook/ament_prefix_path.ps1
+source;share/mecanum_joystick/hook/ament_prefix_path.dsv
+source;share/mecanum_joystick/hook/ament_prefix_path.sh
