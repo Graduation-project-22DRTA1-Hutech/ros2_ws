@@ -8,7 +8,7 @@ class MecanumJoyControl(Node):
     def __init__(self):
         super().__init__('mecanum_joy_control')
         
-        # Publisher gửi lệnh xuống vi điều khiển
+        # Publisher gửi lệnh xuống vi điều khiển (String: SET f1 d1...)
         self.publisher_ = self.create_publisher(String, 'freq_cmd', 10)
         
         # Subscriber nhận tín hiệu từ joy_node
@@ -18,102 +18,97 @@ class MecanumJoyControl(Node):
             self.joy_callback,
             10)
 
-        # Thông số robot
-        self.L = 0.2      # khoảng cách tâm -> trục trước/sau (m)
-        self.W = 0.15     # khoảng cách tâm -> trục trái/phải (m)
-        self.R = 0.05     # bán kính bánh xe (m)
-        self.ppr = 5000   # số xung mỗi vòng
-        self.MAX_FREQ = 7000  # Tần số tối đa (Hz)
+        # --- CẤU HÌNH ROBOT ---
+        self.ppr = 5000       # số xung/vòng
+        self.MAX_FREQ = 3000  # Tần số tối đa (Hz) - Tăng lên để chạy nhanh hơn nếu muốn
+        self.R = 0.05         # Bán kính bánh xe (m)
         
-        # Tốc độ xoay tại chỗ
-        self.rotate_speed_fixed = 1.0
+        # Deadzone (Vùng chết): Nếu cần gạt nhích nhẹ dưới mức này sẽ coi là 0
+        self.DEADZONE = 0.01 
 
-        self.get_logger().info("Mecanum Joy Node Started. Waiting for /joy messages...")
+        self.get_logger().info("Mecanum Joy Node Started (Matrix Corrected).")
 
-    def omega_to_freq_dir(self, omega):
-        freq = abs(omega) * self.ppr / (2 * math.pi)
-        freq = min(freq, self.MAX_FREQ)
-        direction = 1 if omega >= 0 else 0
-        return int(freq), direction
+    def val_to_freq_dir(self, val):
+        """
+        Chuyển đổi giá trị vận tốc tính toán sang Tần số và Hướng
+        Dựa trên ma trận của bạn: 
+        - Forward = 0000 => Giá trị Dương (>=0) là Dir 0
+        - Backward = 1111 => Giá trị Âm (<0) là Dir 1
+        """
+        freq = abs(val)
+        
+        # Map giá trị (-1.0 đến 1.0) sang tần số (0 đến MAX_FREQ)
+        # Vì công thức bên dưới cộng gộp vx, vy, wz nên giá trị có thể > 1.0
+        # Ta nhân hệ số để scale lên tần số mong muốn
+        scale = self.MAX_FREQ 
+        target_freq = freq * scale
+        
+        # Clamp (kẹp) tần số không vượt quá MAX
+        target_freq = min(target_freq, self.MAX_FREQ)
+        
+        # Xác định hướng: Dương là 0, Âm là 1
+        direction = 0 if val >= 0 else 1
+        
+        return int(target_freq), direction
 
     def joy_callback(self, msg):
-        # --- Mapping Tay cầm (ROS standard mapping) ---
-        # msg.axes thường là: [Left-LR, Left-UD, L2, Right-LR, Right-UD, R2, Dpad-LR, Dpad-UD]
-        # Lưu ý: Trong ROS Joy, đẩy cần lên (Up) thường là +1.0, Trái (Left) là +1.0
+        # --- 1. MAPPING TAY CẦM ---
+        # Joystick Trái: Axes 0 (Trái/Phải), Axes 1 (Lên/Xuống)
+        # ROS Standard: 
+        #   Axis 1: Lên = +1.0, Xuống = -1.0
+        #   Axis 0: Trái = +1.0, Phải = -1.0
         
-        # Axis 1: Left Stick Up/Down (Forward/Backward)
-        axis_x_linear = msg.axes[1] 
+        raw_x = msg.axes[1] # Lên/Xuống
+        raw_y = msg.axes[0] # Trái/Phải
         
-        # Axis 0: Left Stick Left/Right (Strafe)
-        # Pygame cũ: Right=+1. ROS: Left=+1. Nên ta đảo dấu để Right là dương (nếu muốn)
-        # Tuy nhiên, chuẩn Robot: Y dương là sang trái. Giữ nguyên msg.axes[0] là sang trái.
-        axis_y_linear = msg.axes[0] 
+        # Joystick Phải: Axes 3 (Trái/Phải), Axes 4 (Lên/Xuống)
+        # Ta dùng Axis 3 để xoay
+        raw_z = msg.axes[3] # Xoay Trái/Phải
 
-        # Axis 3: Right Stick Left/Right (Rotation)
-        axis_z_angular = msg.axes[3] if len(msg.axes) > 3 else 0.0
+        # --- 2. XỬ LÝ DEADZONE ---
+        vx = raw_x if abs(raw_x) > self.DEADZONE else 0.0
+        vy = raw_y if abs(raw_y) > self.DEADZONE else 0.0
+        wz = raw_z if abs(raw_z) > self.DEADZONE else 0.0
 
-        # Gán vận tốc
-        vx = axis_x_linear      # Đi tới
-        vy = axis_y_linear      # Đi ngang (trái)
-        wz = axis_z_angular     # Xoay (trái)
-
-        # --- Xử lý nút bấm L1/R1 để xoay tại chỗ ---
-        # Mapping nút thường: msg.buttons[4] là L1, msg.buttons[5] là R1
-        # Kiểm tra index tránh lỗi index out of range
-        rotate_left = msg.buttons[4] if len(msg.buttons) > 4 else 0
-        rotate_right = msg.buttons[5] if len(msg.buttons) > 5 else 0
-
-        if rotate_left:
-            vx = vy = 0.0
-            wz = self.rotate_speed_fixed
-        elif rotate_right:
-            vx = vy = 0.0
-            wz = -self.rotate_speed_fixed
-
-        # --- Tính toán độ học Mecanum ---
-        # Quy ước bánh xe:
-        # 1: Trước Trái, 2: Trước Phải, 3: Sau Phải, 4: Sau Trái (Theo thứ tự code cũ của bạn)
-        # Công thức Mecanum cơ bản (có thể cần đảo dấu tùy cách lắp động cơ thực tế)
-        Lw = self.L + self.W
+        # --- 3. CHUẨN HÓA HƯỚNG ---
+        # Muốn:
+        # - Đẩy tới (raw_x > 0) -> vx > 0 (Forward)
+        # - Gạt Phải (raw_y < 0) -> vy > 0 (Move Right) -> Cần đảo dấu Axis 0
+        # - Gạt Xoay Phải (raw_z < 0) -> wz > 0 (Rotate Right) -> Cần đảo dấu Axis 3
         
-        # Lưu ý: Code cũ: v1 = vx - vy - Lw*wz.
-        # Nếu vx dương (tới), vy dương (trái), wz dương (xoay trái)
-        v1 = (vx - vy - Lw * wz)
-        v2 = (vx + vy + Lw * wz)
-        v3 = (vx + vy - Lw * wz)
-        v4 = (vx - vy + Lw * wz)
+        vx = vx                 # Giữ nguyên (Lên là dương)
+        vy = -vy                # Đảo dấu (Để gạt sang phải là dương)
+        wz = -wz                # Đảo dấu (Để gạt sang phải là dương - xoay phải)
 
-        omega1 = v1 / self.R
-        omega2 = v2 / self.R
-        omega3 = v3 / self.R
-        omega4 = v4 / self.R
-
-        f1, d1 = self.omega_to_freq_dir(omega1)
-        f2, d2 = self.omega_to_freq_dir(omega2)
-        f3, d3 = self.omega_to_freq_dir(omega3)
-        f4, d4 = self.omega_to_freq_dir(omega4)
-
-        # --- Xử lý Deadzone / Idle (Logic từ code cũ) ---
-        idle_freqs = [146, 21, 21, 102] 
-        offset = 15
+        # --- 4. CÔNG THỨC MECANUM (DỰA TRÊN MA TRẬN CỦA BẠN) ---
+        # Ma trận yêu cầu:
+        # Move Right (vy>0): 0 1 1 0 => (+ - - +)
+        # Rotate Right (wz>0): 0 0 1 1 => (+ + - -)
         
-        # Kiểm tra nếu cần gạt về 0 (hoặc gần 0) thì áp dụng logic idle
-        # Ta kiểm tra đầu vào joy gần 0 thay vì output freq để chính xác hơn, 
-        # nhưng để tôn trọng logic phần cứng cũ của bạn, tôi giữ nguyên logic so sánh freq.
-        if all(abs(f - idle) <= offset for f, idle in zip([f1, f2, f3, f4], idle_freqs)):
-            f1 = f2 = f3 = f4 = 1
-            d1 = d2 = d3 = d4 = 0
-        
-        # Nếu tay cầm không bấm gì (tất cả axes/buttons = 0), force stop để an toàn
+        # Công thức tổng hợp:
+        v1 = vx + vy + wz  # Bánh 1 (Trước Trái): + + +
+        v2 = vx - vy + wz  # Bánh 2 (Trước Phải): + - +
+        v3 = vx - vy - wz  # Bánh 3 (Sau Phải)  : + - -
+        v4 = vx + vy - wz  # Bánh 4 (Sau Trái)  : + + -
+
+        # --- 5. CHUYỂN ĐỔI SANG FREQ & DIR ---
+        f1, d1 = self.val_to_freq_dir(v1)
+        f2, d2 = self.val_to_freq_dir(v2)
+        f3, d3 = self.val_to_freq_dir(v3)
+        f4, d4 = self.val_to_freq_dir(v4)
+
+        # --- 6. GỬI LỆNH ---
+        # Nếu tất cả joystick về 0, gửi lệnh dừng tuyệt đối (1Hz, Dir 0 để giữ torque hoặc 0Hz để thả trôi)
         if vx == 0 and vy == 0 and wz == 0:
-             # Logic idle cũ của bạn có thể vẫn trả về tần số nhiễu (146, 21...), 
-             # đoạn code trên đã xử lý việc gán về 1.
-             pass 
+            f1 = f2 = f3 = f4 = 0 # Hoặc để 1 nếu muốn giữ cứng bánh
+            d1 = d2 = d3 = d4 = 0
 
         msg_str = String()
         msg_str.data = f"SET {f1} {d1} {f2} {d2} {f3} {d3} {f4} {d4}"
         self.publisher_.publish(msg_str)
-        # self.get_logger().info(f'[Xuất]: {msg_str.data}') # Uncomment nếu muốn debug
+        
+        # Debug (Bật lên để kiểm tra nếu chạy sai)
+        # self.get_logger().info(f"Vx:{vx:.2f} Vy:{vy:.2f} Wz:{wz:.2f} -> {msg_str.data}")
 
 def main(args=None):
     rclpy.init(args=args)
