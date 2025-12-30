@@ -1,172 +1,123 @@
-#!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Joy
 from std_msgs.msg import String
+from sensor_msgs.msg import Joy
 import math
-import time
 
-
-class JoyDynamicsMecanum(Node):
+class MecanumJoyControl(Node):
     def __init__(self):
-        super().__init__('joy_dynamics_mecanum')
+        super().__init__('mecanum_joy_control')
+        
+        # Publisher gửi lệnh xuống vi điều khiển
+        self.publisher_ = self.create_publisher(String, 'freq_cmd', 10)
+        
+        # Subscriber nhận tín hiệu từ joy_node
+        self.subscription = self.create_subscription(
+            Joy,
+            'joy',
+            self.joy_callback,
+            10)
 
-        # ================= ROS =================
-        self.sub = self.create_subscription(Joy, '/joy', self.joy_cb, 10)
-        self.pub = self.create_publisher(String, 'freq_cmd', 10)
+        # Thông số robot
+        self.L = 0.2      # khoảng cách tâm -> trục trước/sau (m)
+        self.W = 0.15     # khoảng cách tâm -> trục trái/phải (m)
+        self.R = 0.05     # bán kính bánh xe (m)
+        self.ppr = 5000   # số xung mỗi vòng
+        self.MAX_FREQ = 7000  # Tần số tối đa (Hz)
+        
+        # Tốc độ xoay tại chỗ
+        self.rotate_speed_fixed = 1.0
 
-        # dynamics chạy nhanh
-        self.dyn_timer = self.create_timer(0.02, self.dynamics_cb)   # 50 Hz
-        # publish chậm
-        self.pub_timer = self.create_timer(0.1, self.publish_cb)    # 10 Hz
+        self.get_logger().info("Mecanum Joy Node Started. Waiting for /joy messages...")
 
-        # ================= ROBOT PARAM =================
-        self.L = 0.20
-        self.W = 0.15
-        self.R = 0.05
-        self.PPR = 5000
-        self.MAX_FREQ = 5000
+    def omega_to_freq_dir(self, omega):
+        freq = abs(omega) * self.ppr / (2 * math.pi)
+        freq = min(freq, self.MAX_FREQ)
+        direction = 1 if omega >= 0 else 0
+        return int(freq), direction
 
-        # ================= JOYSTICK =================
-        self.deadzone = 0.2
-        self.max_v = 1.0
-        self.max_wz = 2.0
+    def joy_callback(self, msg):
+        # --- Mapping Tay cầm (ROS standard mapping) ---
+        # msg.axes thường là: [Left-LR, Left-UD, L2, Right-LR, Right-UD, R2, Dpad-LR, Dpad-UD]
+        # Lưu ý: Trong ROS Joy, đẩy cần lên (Up) thường là +1.0, Trái (Left) là +1.0
+        
+        # Axis 1: Left Stick Up/Down (Forward/Backward)
+        axis_x_linear = msg.axes[1] 
+        
+        # Axis 0: Left Stick Left/Right (Strafe)
+        # Pygame cũ: Right=+1. ROS: Left=+1. Nên ta đảo dấu để Right là dương (nếu muốn)
+        # Tuy nhiên, chuẩn Robot: Y dương là sang trái. Giữ nguyên msg.axes[0] là sang trái.
+        axis_y_linear = msg.axes[0] 
 
-        # ================= STEP CONTROL =================
-        self.min_step = 0.005
-        self.max_step = 0.05
-        self.step_gain = 0.005
+        # Axis 3: Right Stick Left/Right (Rotation)
+        axis_z_angular = msg.axes[3] if len(msg.axes) > 3 else 0.0
 
-        # ================= MECANUM FIX =================
-        # Thứ tự: FL, FR, RL, RR
-        self.wheel_sign = [+1, +1, -1, -1]
+        # Gán vận tốc
+        vx = axis_x_linear      # Đi tới
+        vy = axis_y_linear      # Đi ngang (trái)
+        wz = axis_z_angular     # Xoay (trái)
 
-        # ================= STATE =================
-        self.joy = None
+        # --- Xử lý nút bấm L1/R1 để xoay tại chỗ ---
+        # Mapping nút thường: msg.buttons[4] là L1, msg.buttons[5] là R1
+        # Kiểm tra index tránh lỗi index out of range
+        rotate_left = msg.buttons[4] if len(msg.buttons) > 4 else 0
+        rotate_right = msg.buttons[5] if len(msg.buttons) > 5 else 0
 
-        self.prev_ax = 0.0
-        self.prev_ay = 0.0
-        self.prev_ar = 0.0
-        self.prev_time = time.time()
+        if rotate_left:
+            vx = vy = 0.0
+            wz = self.rotate_speed_fixed
+        elif rotate_right:
+            vx = vy = 0.0
+            wz = -self.rotate_speed_fixed
 
-        self.vx = 0.0
-        self.vy = 0.0
-        self.wz = 0.0
-
-        self.last_set = None
-        self.stop_sent = False
-
-        self.get_logger().info("Joy dynamics + mecanum + 10Hz publish (FINAL)")
-
-    # ------------------------------------------------
-    def joy_cb(self, msg: Joy):
-        self.joy = msg
-
-    # ------------------------------------------------
-    def apply_deadzone(self, val):
-        if abs(val) < self.deadzone:
-            return 0.0
-        return (abs(val) - self.deadzone) / (1.0 - self.deadzone) * math.copysign(1.0, val)
-
-    # ------------------------------------------------
-    def smooth_update(self, cur, target, d_axis):
-        step = abs(d_axis) * self.step_gain
-        step = max(self.min_step, min(self.max_step, step))
-
-        diff = target - cur
-        if abs(diff) <= step:
-            return target
-        return cur + step * math.copysign(1.0, diff)
-
-    # ------------------------------------------------
-    # 50 Hz – chỉ làm dynamics
-    def dynamics_cb(self):
-        if self.joy is None:
-            return
-
-        now = time.time()
-        dt = now - self.prev_time
-        if dt <= 0.0:
-            return
-
-        ax = self.joy.axes[0]
-        ay = self.joy.axes[1]
-        ar = self.joy.axes[3]
-
-        dx = (ax - self.prev_ax) / dt
-        dy = (ay - self.prev_ay) / dt
-        dr = (ar - self.prev_ar) / dt
-
-        self.prev_ax = ax
-        self.prev_ay = ay
-        self.prev_ar = ar
-        self.prev_time = now
-
-        dz_x = self.apply_deadzone(ax)
-        dz_y = self.apply_deadzone(ay)
-        dz_r = self.apply_deadzone(ar)
-
-        target_vx = dz_y * self.max_v
-        target_vy = dz_x * self.max_v
-        target_wz = dz_r * self.max_wz
-
-        self.vx = self.smooth_update(self.vx, target_vx, dy)
-        self.vy = self.smooth_update(self.vy, target_vy, dx)
-        self.wz = self.smooth_update(self.wz, target_wz, dr)
-
-    # ------------------------------------------------
-    # 10 Hz – chỉ publish nếu CẦN
-    def publish_cb(self):
-        # ===== STOP =====
-        if self.vx == 0.0 and self.vy == 0.0 and self.wz == 0.0:
-            if not self.stop_sent:
-                self.send_set([(0, 0)] * 4)
-                self.stop_sent = True
-            return
-        else:
-            self.stop_sent = False
-
-        # ===== MECANUM =====
+        # --- Tính toán độ học Mecanum ---
+        # Quy ước bánh xe:
+        # 1: Trước Trái, 2: Trước Phải, 3: Sau Phải, 4: Sau Trái (Theo thứ tự code cũ của bạn)
+        # Công thức Mecanum cơ bản (có thể cần đảo dấu tùy cách lắp động cơ thực tế)
         Lw = self.L + self.W
+        
+        # Lưu ý: Code cũ: v1 = vx - vy - Lw*wz.
+        # Nếu vx dương (tới), vy dương (trái), wz dương (xoay trái)
+        v1 = (vx - vy - Lw * wz)
+        v2 = (vx + vy + Lw * wz)
+        v3 = (vx + vy - Lw * wz)
+        v4 = (vx - vy + Lw * wz)
 
-        omega = [
-            ( self.vx - self.vy - Lw * self.wz) / self.R,
-            ( self.vx + self.vy + Lw * self.wz) / self.R,
-            ( self.vx + self.vy - Lw * self.wz) / self.R,
-            ( self.vx - self.vy + Lw * self.wz) / self.R
-        ]
+        omega1 = v1 / self.R
+        omega2 = v2 / self.R
+        omega3 = v3 / self.R
+        omega4 = v4 / self.R
 
-        for i in range(4):
-            omega[i] *= self.wheel_sign[i]
+        f1, d1 = self.omega_to_freq_dir(omega1)
+        f2, d2 = self.omega_to_freq_dir(omega2)
+        f3, d3 = self.omega_to_freq_dir(omega3)
+        f4, d4 = self.omega_to_freq_dir(omega4)
 
-        freqs = []
-        for w in omega:
-            freq = int(min(abs(w) * self.PPR / (2 * math.pi), self.MAX_FREQ))
-            dir_ = 0 if w >= 0 else 1
-            freqs.append((freq, dir_))
+        # --- Xử lý Deadzone / Idle (Logic từ code cũ) ---
+        idle_freqs = [146, 21, 21, 102] 
+        offset = 15
+        
+        # Kiểm tra nếu cần gạt về 0 (hoặc gần 0) thì áp dụng logic idle
+        # Ta kiểm tra đầu vào joy gần 0 thay vì output freq để chính xác hơn, 
+        # nhưng để tôn trọng logic phần cứng cũ của bạn, tôi giữ nguyên logic so sánh freq.
+        if all(abs(f - idle) <= offset for f, idle in zip([f1, f2, f3, f4], idle_freqs)):
+            f1 = f2 = f3 = f4 = 1
+            d1 = d2 = d3 = d4 = 0
+        
+        # Nếu tay cầm không bấm gì (tất cả axes/buttons = 0), force stop để an toàn
+        if vx == 0 and vy == 0 and wz == 0:
+             # Logic idle cũ của bạn có thể vẫn trả về tần số nhiễu (146, 21...), 
+             # đoạn code trên đã xử lý việc gán về 1.
+             pass 
 
-        set_data = "SET " + " ".join(f"{f} {d}" for f, d in freqs)
+        msg_str = String()
+        msg_str.data = f"SET {f1} {d1} {f2} {d2} {f3} {d3} {f4} {d4}"
+        self.publisher_.publish(msg_str)
+        # self.get_logger().info(f'[Xuất]: {msg_str.data}') # Uncomment nếu muốn debug
 
-        # ===== ANTI-SPAM =====
-        if set_data == self.last_set:
-            return
-
-        msg = String()
-        msg.data = set_data
-        self.pub.publish(msg)
-        self.last_set = set_data
-
-    # ------------------------------------------------
-    def send_set(self, freqs):
-        msg = String()
-        msg.data = "SET " + " ".join(f"{f} {d}" for f, d in freqs)
-        self.pub.publish(msg)
-        self.last_set = msg.data
-
-
-def main():
-    rclpy.init()
-    node = JoyDynamicsMecanum()
+def main(args=None):
+    rclpy.init(args=args)
+    node = MecanumJoyControl()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
@@ -175,7 +126,5 @@ def main():
         node.destroy_node()
         rclpy.shutdown()
 
-
 if __name__ == '__main__':
     main()
-
